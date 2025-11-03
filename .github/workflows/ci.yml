@@ -1,0 +1,57 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build backend and frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js (for frontend build & tests)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install backend dependencies and test (if any)
+        working-directory: ./backend
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+            # descomente se tiver testes no backend:
+            # npm test
+          else
+            echo "No backend package.json found"
+          fi
+
+      - name: Build backend Docker image
+        run: |
+          docker build -t backend:latest ./backend
+
+      - name: Install frontend dependencies and build
+        working-directory: ./client
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+            # Ajuste aqui se o build for diferente (ex: npm run build -- --prod)
+            npm run build --if-present
+          else
+            echo "No frontend package.json found"
+          fi
+
+      - name: Build frontend Docker image
+        run: |
+          docker build -t frontend:v2 ./client
+
+      - name: List created images
+        run: docker images | grep -E 'backend|frontend' || true
+'@ | Out-File -Encoding utf8 .github\workflows\ci.yml
