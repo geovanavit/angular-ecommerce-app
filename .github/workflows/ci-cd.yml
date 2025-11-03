@@ -86,7 +86,7 @@ jobs:
             alias kubectl='sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl'
 
             echo "Atualizando frontend..."
-            kubectl set image deployment/${{ env.FRONT_DEPLOYMENT }} web=${{ env.FRONT_IMAGE }}:v3 -n ${{ env.K8S_NAMESPACE }}
+            kubectl set image deployment/${{ env.FRONT_DEPLOYMENT }} web=${{ env.FRONT_IMAGE }}:v2 -n ${{ env.K8S_NAMESPACE }}
             kubectl rollout status deployment/${{ env.FRONT_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }}
 
             echo "Atualizando backend..."
