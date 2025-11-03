@@ -14,7 +14,7 @@ env:
   
   FRONT_DEPLOYMENT: frontend
   BACK_DEPLOYMENT: backend
-  K8S_NAMESPACE: default
+  K8S_NAMESPACE: app-demo
 
 jobs:
   build-and-push:
