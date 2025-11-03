@@ -90,7 +90,7 @@ jobs:
             kubectl rollout status deployment/${{ env.FRONT_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }}
 
             echo "Atualizando backend..."
-            kubectl set image deployment/${{ env.BACK_DEPLOYMENT }} web=${{ env.BACK_IMAGE }}:latest -n ${{ env.K8S_NAMESPACE }}
+            kubectl set image deployment/${{ env.BACK_DEPLOYMENT }} app=${{ env.BACK_IMAGE }}:latest -n ${{ env.K8S_NAMESPACE }}
             kubectl rollout status deployment/${{ env.BACK_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }}
 
             echo "Deploy finalizado com sucesso."
