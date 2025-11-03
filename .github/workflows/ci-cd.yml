@@ -10,8 +10,8 @@ env:
   REGISTRY: docker.io
 
   FRONT_IMAGE: geojacq/frontend
-  BACK_IMAGE: pedrobrantis/backend
-
+  BACK_IMAGE: geojacq/angular-ecommerce-app-backend
+  
   FRONT_DEPLOYMENT: frontend
   BACK_DEPLOYMENT: backend
   K8S_NAMESPACE: default
