@@ -1,28 +1,28 @@
-name: CI/CD – Build, Push & Rollout (Docker Hub + SSH)
+name: CI/CD Pipeline - Geo E-commerce App
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - master
   workflow_dispatch:
 
 env:
   REGISTRY: docker.io
-  NAMESPACE: app-demo
+
+  FRONT_IMAGE: geojacq/frontend
+  BACK_IMAGE: pedrobrantis/backend
 
   FRONT_DEPLOYMENT: frontend
-  FRONT_CONTAINER: app
   BACK_DEPLOYMENT: backend
-  BACK_CONTAINER: app
+  K8S_NAMESPACE: default
 
 jobs:
   build-and-push:
-    name: Build & Push (frontend + backend)
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up QEMU
@@ -34,58 +34,63 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      # ---------- FRONTEND ----------
-      - name: Build & Push Frontend
+      - name: Build and Push Frontend
         uses: docker/build-push-action@v6
         with:
           context: ./client
           file: ./client/Dockerfile
           push: true
-          tags: docker.io/pedrobrantis/frontend:latest,docker.io/pedrobrantis/frontend:${{ github.sha }}
+          tags: |
+            ${{ env.FRONT_IMAGE }}:v2
+            ${{ env.FRONT_IMAGE }}:${{ github.sha }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
-      # ---------- BACKEND ----------
-      - name: Build & Push Backend
+      - name: Build and Push Backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: docker.io/pedrobrantis/backend:latest,docker.io/pedrobrantis/backend:${{ github.sha }}
+          tags: |
+            ${{ env.BACK_IMAGE }}:latest
+            ${{ env.BACK_IMAGE }}:${{ github.sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
   deploy:
-    name: Rollout via SSH on EC2
+    name: Deploy to AWS EC2
     needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
-      - name: Add EC2 host key
+      - name: Add EC2 Host Key
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Rollout with SSH
+      - name: Rollout to K3s Cluster
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}  # ex.: ubuntu
+          username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script_stop: true
           script: |
-            set -euo pipefail
+            set -e
             export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
             alias kubectl='sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl'
 
-            echo ">> Atualizando FRONTEND"
-            sudo kubectl rollout restart deployment frontend -n app-demo
+            echo "Atualizando frontend..."
+            kubectl set image deployment/${{ env.FRONT_DEPLOYMENT }} app=${{ env.FRONT_IMAGE }}:v3 -n ${{ env.K8S_NAMESPACE }}
+            kubectl rollout status deployment/${{ env.FRONT_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }}
 
-            echo ">> Atualizando BACKEND"
-            sudo kubectl rollout restart deployment backend -n app-demo
+            echo "Atualizando backend..."
+            kubectl set image deployment/${{ env.BACK_DEPLOYMENT }} app=${{ env.BACK_IMAGE }}:latest -n ${{ env.K8S_NAMESPACE }}
+            kubectl rollout status deployment/${{ env.BACK_DEPLOYMENT }} -n ${{ env.K8S_NAMESPACE }}
+
+            echo "Deploy finalizado com sucesso."
