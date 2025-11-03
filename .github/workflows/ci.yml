@@ -10,48 +10,32 @@ on:
 
 jobs:
   build:
-    name: Build backend and frontend
+    name: Build and Push Docker Images
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js (for frontend build & tests)
-        uses: actions/setup-node@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          node-version: '18'
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Install backend dependencies and test (if any)
-        working-directory: ./backend
-        run: |
-          if [ -f package.json ]; then
-            npm ci
-            # descomente se tiver testes no backend:
-            # npm test
-          else
-            echo "No backend package.json found"
-          fi
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: geojacq/geofront-backend:latest
 
-      - name: Build backend Docker image
-        run: |
-          docker build -t backend:latest ./backend
-
-      - name: Install frontend dependencies and build
-        working-directory: ./client
-        run: |
-          if [ -f package.json ]; then
-            npm ci
-            # Ajuste aqui se o build for diferente (ex: npm run build -- --prod)
-            npm run build --if-present
-          else
-            echo "No frontend package.json found"
-          fi
-
-      - name: Build frontend Docker image
-        run: |
-          docker build -t frontend:v2 ./client
-
-      - name: List created images
-        run: docker images | grep -E 'backend|frontend' || true
-'@ | Out-File -Encoding utf8 .github\workflows\ci.yml
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./client
+          push: true
+          tags: geojacq/geofront-frontend:v2
